@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-header d-flex justify-content-between align-items-center">
+  <div>
+    <h3><i class="bi bi-folder2-open me-2"></i>My Files</h3>
+    <p class="text-muted mb-0 mt-2">
+      <i class="bi bi-files me-1"></i>{{ files|length }} file{% if files|length != 1 %}s{% endif %} available
+    </p>
+  </div>
+  <div>
+    {% if current_user.is_teacher() or current_user.is_staff() or current_user.is_admin() or current_user.is_student() %}
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+        <i class="bi bi-cloud-upload me-2"></i>Upload File
+      </button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="table-container">
+  {% if files %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th><i class="bi bi-file-earmark me-2"></i>Name</th>
+        <th><i class="bi bi-person me-2"></i>Owner</th>
+        <th><i class="bi bi-shield-check me-2"></i>Permission</th>
+        <th><i class="bi bi-clock me-2"></i>Uploaded</th>
+        <th><i class="bi bi-download me-2"></i>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in files %}
+      <tr>
+        <td>
+          <i class="bi bi-file-earmark-fill me-2 text-primary"></i>
+          <strong>{{ f.original_filename }}</strong>
+        </td>
+        <td>{{ owner_map[f.owner_id] if f.owner_id in owner_map else 'user' }}</td>
+        <td>
+          <span class="permission-badge permission-{{ f.permission.value }}">
+            {% if f.permission.value == 'private' %}
+              <i class="bi bi-lock-fill me-1"></i>Private
+            {% elif f.permission.value == 'teacher_only' %}
+              <i class="bi bi-mortarboard-fill me-1"></i>Teachers
+            {% elif f.permission.value == 'staff_teacher' %}
+              <i class="bi bi-people-fill me-1"></i>Staff+Teachers
+            {% else %}
+              <i class="bi bi-globe me-1"></i>Public
+            {% endif %}
+          </span>
+        </td>
+        <td>{{ f.uploaded_at.strftime('%b %d, %Y %H:%M') }}</td>
+        <td>
+          <a class="btn btn-sm btn-download" href="{{ url_for('files_bp.download_file', filename=f.stored_filename) }}">
+            <i class="bi bi-download me-1"></i>Download
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-state-icon">
+      <i class="bi bi-inbox"></i>
+    </div>
+    <h4>No files yet</h4>
+    <p class="text-muted">Upload your first file to get started!</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form method="post" action="{{ url_for('files_bp.dashboard') }}" enctype="multipart/form-data" class="modal-content">
+      {{ UploadForm.hidden_tag() }}
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-cloud-upload me-2"></i>Upload New File</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-4">
+          <label for="file" class="form-label">
+            <i class="bi bi-file-earmark-arrow-up me-2"></i>Choose File
+          </label>
+          <input type="file" name="file" class="form-control" required accept=".doc,.docx,.odt,.txt,.rtf,.pdf,.xls,.xlsx,.ods,.csv,.zip,.rar,.7z">
+          <small class="form-text text-muted mt-2 d-block">
+            <i class="bi bi-info-circle me-1"></i>Maximum file size: 15 MB
+          </small>
+          <small class="form-text text-muted d-block">
+            <i class="bi bi-file-earmark-check me-1"></i>Allowed: Documents (doc, docx, pdf, txt), Spreadsheets (xls, xlsx, csv), Archives (zip, rar, 7z)
+          </small>
+        </div>
+        <div class="mb-3">
+          <label for="permission" class="form-label">
+            <i class="bi bi-shield-lock me-2"></i>Permission Level
+          </label>
+          <select name="permission" class="form-select">
+            {% if current_user.is_student() %}
+              <option value="teacher_only" selected>
+                <i class="bi bi-mortarboard-fill"></i> Teachers + Owner (Students can only use this)
+              </option>
+            {% elif current_user.is_teacher() %}
+              <option value="teacher_only" selected>🎓 Teachers + Owner</option>
+              <option value="public">🌍 Public (Everyone)</option>
+            {% else %}
+              <option value="private">🔒 Private (Owner only)</option>
+              <option value="teacher_only" selected>🎓 Teachers + Owner</option>
+              <option value="staff_teacher">👥 Staff + Teachers + Owner</option>
+              <option value="public">🌍 Public (Everyone)</option>
+            {% endif %}
+          </select>
+          <small class="form-text text-muted mt-2 d-block">
+            {% if current_user.is_student() %}
+              <i class="bi bi-info-circle me-1"></i>Students can only upload files visible to teachers.
+            {% elif current_user.is_teacher() %}
+              <i class="bi bi-info-circle me-1"></i>Teachers can set 'Teachers + Owner' or 'Public' permissions.
+            {% else %}
+              <i class="bi bi-info-circle me-1"></i>Staff and admins can set any permission level.
+            {% endif %}
+          </small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-cloud-upload me-1"></i>Upload File
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard-header mb-4">
+  <h3><i class="bi bi-people-fill me-2"></i>User Management</h3>
+  <p class="text-muted mb-0">Create, manage, and monitor user accounts</p>
+</div>
+
+<div class="row">
+  <div class="col-md-5">
+    <div class="table-container">
+      <h5 class="mb-3"><i class="bi bi-person-plus-fill me-2"></i>Create New User</h5>
+      <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+          <label class="form-label"><i class="bi bi-person me-2"></i>{{ form.username.label.text }}</label>
+          {{ form.username(class="form-control", placeholder="Enter username") }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><i class="bi bi-shield-check me-2"></i>{{ form.role.label.text }}</label>
+          {{ form.role(class="form-select") }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><i class="bi bi-key-fill me-2"></i>{{ form.temp_password.label.text }}</label>
+          {{ form.temp_password(class="form-control", placeholder="Temporary password") }}
+          <small class="form-text text-muted">User will be required to change this on first login</small>
+        </div>
+        <div class="d-grid">
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <div class="col-md-7">
+    <div class="table-container">
+      <h5 class="mb-3"><i class="bi bi-people me-2"></i>Existing Users ({{ users|length }})</h5>
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th><i class="bi bi-person me-1"></i>Username</th>
+              <th><i class="bi bi-shield me-1"></i>Role</th>
+              <th><i class="bi bi-toggle-on me-1"></i>Status</th>
+              <th><i class="bi bi-gear me-1"></i>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for u in users %}
+            <tr>
+              <td>
+                <strong>{{ u.username }}</strong>
+                {% if u.first_login %}
+                  <span class="badge bg-warning text-dark ms-2">First Login</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="permission-badge permission-{{ u.role.value }}">
+                  {{ u.role.value }}
+                </span>
+              </td>
+              <td>
+                {% if u.is_active %}
+                  <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Active</span>
+                {% else %}
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Deactivated</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.id != current_user.id %}
+                  <form method="post" action="{{ url_for('admin.toggle_user_status', user_id=u.id) }}" style="display: inline;">
+                    {% if u.is_active %}
+                      <button type="submit" class="btn btn-sm btn-warning" title="Deactivate Account" onclick="return confirm('Deactivate {{ u.username }}?')">
+                        <i class="bi bi-pause-circle"></i>
+                      </button>
+                    {% else %}
+                      <button type="submit" class="btn btn-sm btn-success" title="Activate Account" onclick="return confirm('Activate {{ u.username }}?')">
+                        <i class="bi bi-play-circle"></i>
+                      </button>
+                    {% endif %}
+                  </form>
+                  
+                  <form method="post" action="{{ url_for('admin.reset_password', user_id=u.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-info" title="Reset Password" onclick="return confirm('Reset password for {{ u.username }}?')">
+                      <i class="bi bi-key"></i>
+                    </button>
+                  </form>
+                {% else %}
+                  <span class="text-muted small">You</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Temporary Password Modal -->
+{% if temp_password %}
+<div class="modal fade show" id="passwordModal" tabindex="-1" style="display: block;" aria-modal="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title"><i class="bi bi-key-fill me-2"></i>Temporary Password Generated</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="this.closest('.modal').style.display='none'"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <strong><i class="bi bi-exclamation-triangle me-2"></i>Security Notice:</strong>
+          This password will only be shown once. Copy it now and share it securely with the user.
+        </div>
+        <p><strong>User:</strong> {{ temp_password_user }}</p>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="tempPassword" value="{{ temp_password }}" readonly>
+          <button class="btn btn-primary" onclick="copyPassword()">
+            <i class="bi bi-clipboard me-1"></i>Copy
+          </button>
+        </div>
+        <small class="text-muted">User will be required to change this password on first login.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="this.closest('.modal').style.display='none'">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show"></div>
+<script>
+function copyPassword() {
+  const input = document.getElementById('tempPassword');
+  input.select();
+  document.execCommand('copy');
+  alert('Password copied to clipboard!');
+}
+</script>
+{% endif %}
+
+<div class="alert alert-info mt-4">
+  <strong><i class="bi bi-info-circle me-2"></i>Admin Actions:</strong>
+  <ul class="mb-0 mt-2">
+    <li><strong>Deactivate:</strong> Prevents user from logging in (account remains in system)</li>
+    <li><strong>Activate:</strong> Re-enables a deactivated account</li>
+    <li><strong>Reset Password:</strong> Generates new temporary password and forces password change on next login</li>
+  </ul>
+</div>
+{% endblock %}
