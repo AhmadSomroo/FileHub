@@ -8,4 +8,4 @@ the app might still be vulnerable to CSRF as some security testing utilities gav
 - Database still contains dummy enteries but some of them will not work because the database also contains the data of files which are obviously not present.
 
 ## Project Overview
-![Overview](images/view.png)
+![Overview](image/view.png)
